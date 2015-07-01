@@ -16,7 +16,7 @@ import java.sql.SQLDataException;
  * Created by john.chy on 6/30/2015.
  */
 public class SQLHelper extends SQLiteOpenHelper{
-    private static String DB_PATH = "/data/data/com.example.johnchy.test/databases";
+    private static String DB_PATH = "/data/data/com.example.johnchy.test/databases/";
     private static String DB_NAME = "VTA.db";
     private SQLiteDatabase tempDatabase;
     private final Context testContext;
@@ -26,7 +26,7 @@ public class SQLHelper extends SQLiteOpenHelper{
                 this.testContext = context;
     }
 
-    public void onCreateDatabase() throws IOException{
+    public void CreateDatabase() throws IOException{
         boolean exists = checkDatabase();
         if(exists){}
         else{

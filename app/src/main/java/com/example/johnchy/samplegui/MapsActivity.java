@@ -2,6 +2,10 @@ package com.example.johnchy.samplegui;
 
 
 import android.app.ProgressDialog;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.SQLException;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.support.v4.app.FragmentActivity;
@@ -36,15 +40,23 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MapsActivity extends FragmentActivity {
 
 
     private GoogleMap map; // Might be null if Google Play services APK is not available.
-    ArrayList<LatLng> markerPoints = new ArrayList<>();
+    Map<String, LatLng> markerPoints = new HashMap<>();
     private static final LatLng SAN_JOSE = new LatLng(37.3394, -121.89389);
     private static final LatLng ROSE_GARDEN = new LatLng(37.3322,-121.9281);
-    private static final LatLng HOLLOW_PARK = new LatLng(37.3257, -121.8621);
+    //private static final LatLng HOLLOW_PARK = new LatLng(37.3257, -121.8621);
+
+    private String busNumber = "10";
+    private static final String dbCommandGET_STOPS = "SELECT DISTINCT s.stop_name, s.stop_lat, s.stop_lon" +
+            "FROM trips AS t INNER JOIN stop_times as st" +
+            "ON st.trip_id = t.trip_id" +
+            "INNER JOIN stops AS s ON s.stop_id = st.stop_id" +
+            "WHERE route_id = \"10\" AND t.service_id = \"Weekdays\" AND t.direction_id = \"0\"";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,14 +101,42 @@ public class MapsActivity extends FragmentActivity {
     }
 
     private void addMarkers(){
+        int recordCount = 0;
+        Context context = getApplicationContext();
+        SQLHelper markerDBHelper = new SQLHelper(context);
+        try{
+            markerDBHelper.CreateDatabase();
+        }catch(IOException e)
+        {
+            throw new Error("Unable to create database");
+        }
+        try{
+            markerDBHelper.openDataBase();;
+            SQLiteDatabase db = markerDBHelper.getReadableDatabase();
+            Cursor c = db.rawQuery(dbCommandGET_STOPS,null);
+            recordCount = c.getCount();
+            if(recordCount > 0)
+            {
+                if(c.moveToFirst()){
+                    for(int i = 0; i<recordCount; i++)
+                    {
+                        LatLng coordinates = new LatLng(Double.parseDouble(c.getString(c.getColumnIndex("stop_lat"))), Double.parseDouble(c.getString(c.getColumnIndex("stop_lon"))));
+                        markerPoints.put(c.getString(c.getColumnIndex("stop_name")), coordinates);
+
+                    }
+                }
+            }
+        }catch(SQLException sqle){
+            sqle.printStackTrace();
+        }
 
     }
-    private void setUpMarkers(ArrayList<LatLng> points){
+    private void setUpMarkers(Map<String, LatLng> points){
         /*map.addMarker(new MarkerOptions().position(ROSE_GARDEN).title("Marker"));
         map.addMarker(new MarkerOptions().position(HOLLOW_PARK).title("Marker"));*/
-       for (int i = 0; i<points.size(); i++)
+       for (Map.Entry<String, LatLng> entry : points.entrySet())
         {
-            map.addMarker(new MarkerOptions().position(points.get(i)).title("Marker"));
+            map.addMarker(new MarkerOptions().position(entry.getValue()).title(entry.getKey()));
         }
     }
     /*
@@ -116,6 +156,8 @@ public class MapsActivity extends FragmentActivity {
         /*markerPoints.add(ROSE_GARDEN);
         markerPoints.add(SAN_JOSE);
         markerPoints.add(HOLLOW_PARK);*/
+        //markerPoints.put("ROSE GARDEN", ROSE_GARDEN);
+        addMarkers();
         setUpMarkers(markerPoints);
     }
 }
