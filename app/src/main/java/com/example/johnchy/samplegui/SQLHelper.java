@@ -1,11 +1,14 @@
 package com.example.johnchy.samplegui;
 
 import android.content.Context;
+import android.content.res.AssetManager;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.os.Build;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,14 +19,20 @@ import java.sql.SQLDataException;
  * Created by john.chy on 6/30/2015.
  */
 public class SQLHelper extends SQLiteOpenHelper{
-    private static String DB_PATH = "/data/data/com.example.johnchy.test/databases/";
+    private static String DB_PATH = "";
     private static String DB_NAME = "VTA.db";
     private SQLiteDatabase tempDatabase;
     private final Context testContext;
 
     public SQLHelper(Context context){
         super(context, DB_NAME, null, 1);
-                this.testContext = context;
+        if(Build.VERSION.SDK_INT >= 17){
+            DB_PATH = context.getApplicationInfo().dataDir + "/databases/";
+        }
+        else{
+            DB_PATH ="/data/data/" + context.getApplicationInfo().dataDir + "/databases";
+        }
+        this.testContext = context;
     }
 
     public void CreateDatabase() throws IOException{
@@ -41,18 +50,17 @@ public class SQLHelper extends SQLiteOpenHelper{
     }
 
     private boolean checkDatabase(){
-        SQLiteDatabase check = null;
+        SQLiteDatabase checkDB = null;
         try{
-            String Path = DB_PATH + DB_NAME;
-            check = SQLiteDatabase.openDatabase(Path, null, SQLiteDatabase.OPEN_READONLY);
+            String myPath = DB_PATH + DB_NAME;
+            checkDB = SQLiteDatabase.openDatabase(myPath, null, SQLiteDatabase.OPEN_READONLY);
+        }catch(SQLiteException e){
+            //database does't exist yet.
         }
-        catch (SQLiteException e){
-            e.printStackTrace();
+        if(checkDB != null){
+            checkDB.close();
         }
-        if (check != null){
-            check.close();
-        }
-        return check != null;
+        return checkDB != null ? true : false;
     }
 
 
@@ -80,7 +88,7 @@ public class SQLHelper extends SQLiteOpenHelper{
     {
         //Open the database
         String myPath = DB_PATH + DB_NAME;
-        tempDatabase = SQLiteDatabase.openDatabase(myPath, null, SQLiteDatabase.OPEN_READONLY);
+        tempDatabase = SQLiteDatabase.openDatabase(myPath, null, SQLiteDatabase.CREATE_IF_NECESSARY);
     }
     @Override
     public synchronized void close()

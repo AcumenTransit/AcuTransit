@@ -3,6 +3,7 @@ package com.example.johnchy.samplegui;
 
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
@@ -39,6 +40,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -46,17 +49,20 @@ public class MapsActivity extends FragmentActivity {
 
 
     private GoogleMap map; // Might be null if Google Play services APK is not available.
-    Map<String, LatLng> markerPoints = new HashMap<>();
+    ArrayList<LinkedHashMap<String, LatLng>> markerPoints = new ArrayList<LinkedHashMap<String, LatLng>>();
+    ArrayList<LatLng> shape = new ArrayList<LatLng>();
     private static final LatLng SAN_JOSE = new LatLng(37.3394, -121.89389);
-    private static final LatLng ROSE_GARDEN = new LatLng(37.3322,-121.9281);
+    //private static final LatLng ROSE_GARDEN = new LatLng(37.3322,-121.9281);
     //private static final LatLng HOLLOW_PARK = new LatLng(37.3257, -121.8621);
+    private ProgressDialog dialog;
 
+    private String getShape = "";
     private String busNumber = "10";
-    private static final String dbCommandGET_STOPS = "SELECT DISTINCT s.stop_name, s.stop_lat, s.stop_lon" +
-            "FROM trips AS t INNER JOIN stop_times as st" +
-            "ON st.trip_id = t.trip_id" +
-            "INNER JOIN stops AS s ON s.stop_id = st.stop_id" +
-            "WHERE route_id = \"10\" AND t.service_id = \"Weekdays\" AND t.direction_id = \"0\"";
+    private String day = "Weekdays";
+    private String direction = "0";
+    private static final String dbCommandGET_STOPS = "";
+    private static final String dbCommandGET_SHAPE = "SELECT DISTINCT shape_pt_lat";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,45 +106,243 @@ public class MapsActivity extends FragmentActivity {
         }
     }
 
-    private void addMarkers(){
+    private class addMarkers extends AsyncTask<Void, Void, Void>{
+
         int recordCount = 0;
         Context context = getApplicationContext();
         SQLHelper markerDBHelper = new SQLHelper(context);
-        try{
-            markerDBHelper.CreateDatabase();
-        }catch(IOException e)
-        {
-            throw new Error("Unable to create database");
-        }
-        try{
-            markerDBHelper.openDataBase();;
-            SQLiteDatabase db = markerDBHelper.getReadableDatabase();
-            Cursor c = db.rawQuery(dbCommandGET_STOPS,null);
-            recordCount = c.getCount();
-            if(recordCount > 0)
-            {
-                if(c.moveToFirst()){
-                    for(int i = 0; i<recordCount; i++)
-                    {
-                        LatLng coordinates = new LatLng(Double.parseDouble(c.getString(c.getColumnIndex("stop_lat"))), Double.parseDouble(c.getString(c.getColumnIndex("stop_lon"))));
-                        markerPoints.put(c.getString(c.getColumnIndex("stop_name")), coordinates);
 
+        @Override
+        protected void onPreExecute(){
+            dialog = new ProgressDialog(MapsActivity.this);
+            dialog.setMessage("Downloading data, please wait...");
+            dialog.show();
+            dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                @Override
+                public void onCancel(DialogInterface dialog) {
+                    addMarkers.this.cancel(true);
+                }
+            });
+        }
+        @Override
+        protected Void doInBackground(Void... params) {
+            try{
+                markerDBHelper.CreateDatabase();
+            }catch(IOException e)
+            {
+                throw new Error("Unable to create database");
+            }
+            try{
+                markerDBHelper.openDataBase();
+                SQLiteDatabase db = markerDBHelper.getReadableDatabase();
+                Cursor stopCursor = db.rawQuery("SELECT DISTINCT s.stop_name, s.stop_lat, s.stop_lon, shape_id " +
+                        "FROM trips as t INNER JOIN stop_times as st " +
+                        "ON st.trip_id = t.trip_id " +
+                        "INNER JOIN stops as s ON s.stop_id = st.stop_id " +
+                        "WHERE route_id = " + "\"" + busNumber + "\"" + "AND t.service_id = " + "\"" + day + "\"" + "AND t.direction_id = " +
+                        "\"" + direction + "\"",null);
+                recordCount = stopCursor.getCount();
+                if(recordCount > 0)
+                {
+                    if(stopCursor.moveToFirst()){
+                        getShape = stopCursor.getString(stopCursor.getColumnIndex("shape_id"));
+                        for(int i = 0; i<recordCount; i++)
+                        {
+                            LinkedHashMap<String, LatLng> input = new LinkedHashMap<>();
+                            LatLng coordinates = new LatLng(Double.parseDouble(stopCursor.getString(stopCursor.getColumnIndex("stop_lat"))), Double.parseDouble(stopCursor.getString(stopCursor.getColumnIndex("stop_lon"))));
+                            input.put(stopCursor.getString(stopCursor.getColumnIndex("stop_name")), coordinates);
+                            markerPoints.add(input);
+                            stopCursor.moveToNext();
+                        }
                     }
                 }
+               // Cursor shapeCursor = db.rawQuery(dbCommandGET_SHAPE, null);
+            }catch(SQLException sqle){
+                sqle.printStackTrace();
             }
-        }catch(SQLException sqle){
-            sqle.printStackTrace();
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void v){
+            dialog.dismiss();
+            setUpMarkers(markerPoints);
+        }
+    }
+
+    private void setUpMarkers(ArrayList<LinkedHashMap<String, LatLng>> points){
+        /*map.addMarker(new MarkerOptions().position(ROSE_GARDEN).title("Marker"));
+        map.addMarker(new MarkerOptions().position(HOLLOW_PARK).title("Marker"));*/
+        for (LinkedHashMap<String, LatLng> inputs : markerPoints){
+            for(Map.Entry<String, LatLng> entry : inputs.entrySet()){
+                map.addMarker(new MarkerOptions().position(entry.getValue()).title(entry.getKey()));
+            }
+        }
+    }
+
+
+
+    private String getDirectionsUrl(LatLng origin,LatLng dest){
+
+        // Origin of route
+        String str_origin = "origin="+origin.latitude+","+origin.longitude;
+
+        // Destination of route
+        String str_dest = "destination="+dest.latitude+","+dest.longitude;
+
+
+        // Sensor enabled
+        String sensor = "sensor=false";
+
+        // Building the parameters to the web service
+        String parameters = str_origin+"&"+str_dest+"&"+sensor;
+
+        // Output format
+        String output = "json";
+
+        // Building the url to the web service
+        String url = "https://maps.googleapis.com/maps/api/directions/"+output+"?"+parameters;
+
+
+        return url;
+    }
+
+    /** A method to download json data from url */
+    private String downloadUrl(String strUrl) throws IOException {
+        String data = "";
+        InputStream iStream = null;
+        HttpURLConnection urlConnection = null;
+        try{
+            URL url = new URL(strUrl);
+
+            // Creating an http connection to communicate with url
+            urlConnection = (HttpURLConnection) url.openConnection();
+
+            // Connecting to url
+            urlConnection.connect();
+
+            // Reading data from url
+            iStream = urlConnection.getInputStream();
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(iStream));
+
+            StringBuffer sb  = new StringBuffer();
+
+            String line = "";
+            while( ( line = br.readLine())  != null){
+                sb.append(line);
+            }
+
+            data = sb.toString();
+
+            br.close();
+
+        }catch(Exception e){
+            Log.d("url Error", e.toString());
+        }finally{
+            iStream.close();
+            urlConnection.disconnect();
+        }
+        return data;
+    }
+
+    // Fetches data from url passed
+    private class DownloadTask extends AsyncTask<String, Void, String> {
+
+        // Downloading data in non-ui thread
+        @Override
+        protected String doInBackground(String... url) {
+
+            // For storing data from web service
+            String data = "";
+
+            try{
+                // Fetching the data from web service
+                data = downloadUrl(url[0]);
+            }catch(Exception e){
+                Log.d("Background Task",e.toString());
+            }
+            return data;
+        }
+
+        // Executes in UI thread, after the execution of
+        // doInBackground()
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+
+            ParserTask parserTask = new ParserTask();
+
+            // Invokes the thread for parsing the JSON data
+            parserTask.execute(result);
+
+        }
+
+        /** A class to parse the Google Places in JSON format */
+        private class ParserTask extends AsyncTask<String, Integer, List<List<HashMap<String,String>>> >{
+
+            // Parsing the data in non-ui thread
+            @Override
+            protected List<List<HashMap<String, String>>> doInBackground(String... jsonData) {
+
+                JSONObject jObject;
+                List<List<HashMap<String, String>>> routes = null;
+
+                try{
+                    jObject = new JSONObject(jsonData[0]);
+                    DirectionsJSONParser parser = new DirectionsJSONParser();
+
+                    // Starts parsing data
+                    routes = parser.parse(jObject);
+                }catch(Exception e){
+                    e.printStackTrace();
+                }
+                return routes;
+            }
+
+            // Executes in UI thread, after the parsing process
+            @Override
+            protected void onPostExecute(List<List<HashMap<String, String>>> result) {
+                ArrayList<LatLng> points = null;
+                PolylineOptions lineOptions = null;
+                MarkerOptions markerOptions = new MarkerOptions();
+
+                // Traversing through all the routes
+                for(int i=0;i<result.size();i++){
+                    points = new ArrayList<LatLng>();
+                    lineOptions = new PolylineOptions();
+
+                    // Fetching i-th route
+                    List<HashMap<String, String>> path = result.get(i);
+
+                    // Fetching all the points in i-th route
+                    for(int j=0;j<path.size();j++){
+                        HashMap<String,String> point = path.get(j);
+
+                        double lat = Double.parseDouble(point.get("lat"));
+                        double lng = Double.parseDouble(point.get("lng"));
+                        LatLng position = new LatLng(lat, lng);
+
+                        points.add(position);
+                    }
+
+                    // Adding all the points in the route to LineOptions
+                    lineOptions.addAll(points);
+                    lineOptions.width(10);
+                    lineOptions.color(Color.BLUE);
+
+                }
+
+                // Drawing polyline in the Google Map for the i-th route
+                map.addPolyline(lineOptions);
+            }
         }
 
     }
-    private void setUpMarkers(Map<String, LatLng> points){
-        /*map.addMarker(new MarkerOptions().position(ROSE_GARDEN).title("Marker"));
-        map.addMarker(new MarkerOptions().position(HOLLOW_PARK).title("Marker"));*/
-       for (Map.Entry<String, LatLng> entry : points.entrySet())
-        {
-            map.addMarker(new MarkerOptions().position(entry.getValue()).title(entry.getKey()));
-        }
-    }
+
+
+
+
     /*
       This is where we can add markers or lines, add listeners or move the camera.
       <p/>
@@ -157,7 +361,7 @@ public class MapsActivity extends FragmentActivity {
         markerPoints.add(SAN_JOSE);
         markerPoints.add(HOLLOW_PARK);*/
         //markerPoints.put("ROSE GARDEN", ROSE_GARDEN);
-        addMarkers();
-        setUpMarkers(markerPoints);
+        addMarkers MarkerSetforRoute = new addMarkers();
+        MarkerSetforRoute.execute();
     }
 }
