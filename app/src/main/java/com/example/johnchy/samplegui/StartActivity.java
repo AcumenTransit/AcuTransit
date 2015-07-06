@@ -63,7 +63,7 @@ public class StartActivity extends ActionBarActivity {
     }
 
     public void sendMessage(View view){
-        startActivity(new Intent(this, MapsActivity.class));
+        startActivity(new Intent(this, ProgressActivity.class));
     }
 
 }
