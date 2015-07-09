@@ -67,10 +67,9 @@ public class MapsActivity extends FragmentActivity {
     private ProgressDialog dialog;
 
     private String getShape = "";
-    private String busNumber = "18";
+    private String busNumber = "17";
     private String day = "Weekdays";
     private String direction = "0";
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
