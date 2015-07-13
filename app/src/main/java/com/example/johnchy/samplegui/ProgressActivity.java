@@ -1,22 +1,27 @@
 package com.example.johnchy.samplegui;
 
 import android.animation.ObjectAnimator;
+import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
-import android.bluetooth.le.BluetoothLeScanner;
-import android.bluetooth.le.ScanFilter;
-import android.bluetooth.le.ScanSettings;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.SQLException;
+import android.database.sqlite.SQLiteDatabase;
+import android.graphics.Typeface;
+import android.media.Image;
+import android.os.AsyncTask;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
+import android.util.SparseArray;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
-import android.view.animation.DecelerateInterpolator;
+
 
 import android.annotation.TargetApi;
 import android.app.Activity;
@@ -41,192 +46,65 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.widget.ImageButton;
+import android.widget.RelativeLayout;
+import android.widget.TableLayout;
+import android.widget.TableRow;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.google.android.gms.maps.model.LatLng;
 
-@TargetApi(21)
+import org.w3c.dom.Text;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 public class ProgressActivity extends ActionBarActivity {
 
-    private final static int REQUEST_ENABLE_BT = 1;
-    private boolean scan;
+    //private static final UUID BEACON_SERVICE = UUID.fromString("f7826da6-4fa2-4e98-8024-bc5b71e0893e");
+    private BluetoothManager btManager;
     private BluetoothAdapter btAdapter;
-    private Handler btHandler;
-    private static final long SCAN_PERIOD = 10000;
-    private BluetoothLeScanner btScanner;
-    private ScanSettings settings;
-    private List<ScanFilter> filters;
-    private BluetoothGatt mGatt;
+    private int REQUEST_ENABLE_BT = 1;
+    private Handler btHandler = new Handler();
+    private static final long SCAN_PERIOD = 5000;
+    private boolean LEscan;
+    private String ClosestBeacon;
+    private ProgressDialog SetupDialog;
+    private int routeCount = 0;
+    private String route_name;
+    private String bus_number;
+    Intent MapData = new Intent(this, MapsActivity.class);
+
+    ArrayList<String> BeaconsFound;
+    ArrayList<String> BusFoundList;
+    TextView[] Messages = new TextView[4];
+
+
+
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_progress);
-        btHandler = new Handler();
-        if(!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)){
-            Toast.makeText(this, "BLE not supported", Toast.LENGTH_SHORT).show();
-            finish();
-        }
-        final BluetoothManager btManager = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
-        btAdapter = btManager.getAdapter();
+        BeaconsFound = new ArrayList<String>();
+        BusFoundList = new ArrayList<String>();
+        Messages[0] = (TextView) findViewById(R.id.beaconFindprogress);
+        Messages[1] = (TextView) findViewById(R.id.gatheringDataprogress);
+        Messages[2] = (TextView) findViewById(R.id.processingDataprogress);
+        Messages[3] = (TextView) findViewById(R.id.progressDone);
+        checkBluetooth();
+        getNames Bus = new getNames();
+        Bus.execute();
     }
-
-    @Override
-    protected void onResume(){
-        super.onResume();
-        if (btAdapter == null || !btAdapter.isEnabled()) {
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-        } else {
-            if (Build.VERSION.SDK_INT >= 21) {
-                btScanner = btAdapter.getBluetoothLeScanner();
-                settings = new ScanSettings.Builder()
-                        .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-                        .build();
-                filters = new ArrayList<ScanFilter>();
-            }
-            scanLeDevice(true);
-        }
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (btAdapter!= null && btAdapter.isEnabled()) {
-            scanLeDevice(false);
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        if (mGatt == null) {
-            return;
-        }
-        mGatt.close();
-        mGatt = null;
-        super.onDestroy();
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_ENABLE_BT) {
-            if (resultCode == Activity.RESULT_CANCELED) {
-                //Bluetooth not enabled.
-                finish();
-                return;
-            }
-        }
-        super.onActivityResult(requestCode, resultCode, data);
-    }
-
-    private void scanLeDevice(final boolean enable) {
-        if (enable) {
-            btHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    if (Build.VERSION.SDK_INT < 21) {
-                        btAdapter.stopLeScan(mLeScanCallback);
-                    } else {
-                        btScanner.stopScan(mScanCallback);
-
-                    }
-                }
-            }, SCAN_PERIOD);
-            if (Build.VERSION.SDK_INT < 21) {
-                btAdapter.startLeScan(mLeScanCallback);
-            } else {
-                btScanner.startScan(filters, settings, mScanCallback);
-            }
-        } else {
-            if (Build.VERSION.SDK_INT < 21) {
-                btAdapter.stopLeScan(mLeScanCallback);
-            } else {
-                btScanner.stopScan(mScanCallback);
-            }
-        }
-    }
-
-
-    private ScanCallback mScanCallback = new ScanCallback() {
-        @Override
-        public void onScanResult(int callbackType, ScanResult result) {
-            Log.i("callbackType", String.valueOf(callbackType));
-            Log.i("result", result.toString());
-            BluetoothDevice btDevice = result.getDevice();
-            connectToDevice(btDevice);
-        }
-
-        @Override
-        public void onBatchScanResults(List<ScanResult> results) {
-            for (ScanResult sr : results) {
-                Log.i("ScanResult - Results", sr.toString());
-            }
-        }
-
-        @Override
-        public void onScanFailed(int errorCode) {
-            Log.e("Scan Failed", "Error Code: " + errorCode);
-        }
-    };
-
-    private BluetoothAdapter.LeScanCallback mLeScanCallback =
-            new BluetoothAdapter.LeScanCallback() {
-                @Override
-                public void onLeScan(final BluetoothDevice device, int rssi,
-                                     byte[] scanRecord) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Log.i("onLeScan", device.toString());
-                            connectToDevice(device);
-                        }
-                    });
-                }
-            };
-
-    public void connectToDevice(BluetoothDevice device) {
-        if (mGatt == null) {
-            mGatt = device.connectGatt(this, false, gattCallback);
-            scanLeDevice(false);// will stop after first device detection
-        }
-    }
-
-    private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
-        @Override
-        public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-            Log.i("onConnectionStateChange", "Status: " + status);
-            switch (newState) {
-                case BluetoothProfile.STATE_CONNECTED:
-                    Log.i("gattCallback", "STATE_CONNECTED");
-                    gatt.discoverServices();
-                    break;
-                case BluetoothProfile.STATE_DISCONNECTED:
-                    Log.e("gattCallback", "STATE_DISCONNECTED");
-                    break;
-                default:
-                    Log.e("gattCallback", "STATE_OTHER");
-            }
-
-        }
-
-        @Override
-        public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-            List<BluetoothGattService> services = gatt.getServices();
-            Log.i("onServicesDiscovered", services.toString());
-            gatt.readCharacteristic(services.get(1).getCharacteristics().get
-                    (0));
-        }
-
-        @Override
-        public void onCharacteristicRead(BluetoothGatt gatt,
-                                         BluetoothGattCharacteristic
-                                                 characteristic, int status) {
-            Log.i("onCharacteristicRead", characteristic.toString());
-            gatt.disconnect();
-        }
-    };
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -249,13 +127,168 @@ public class ProgressActivity extends ActionBarActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    private class getNames extends AsyncTask<Void, Void, Void> {
 
+        int stopCount = 0;
+        int shapeCount = 0;
+        Context context = getApplicationContext();
+        SQLHelper markerDBHelper = new SQLHelper(context);
+
+        @Override
+        protected void onPreExecute(){
+            TextView beaconMessage = Messages[0];
+            beaconMessage.setText("Looking for beacons...Done!");
+            stopAnimation(Messages, 0);
+            TextView gatheringDataMessage = Messages[1];
+            gatheringDataMessage.setVisibility(View.VISIBLE);
+            startAnimation(Messages, 1);
+
+        }
+        @Override
+        protected Void doInBackground(Void... params) {
+            try{
+                markerDBHelper.CreateDatabase();
+            }catch(IOException e)
+            {
+                throw new Error("Unable to create database");
+            }
+            try{
+                markerDBHelper.openDataBase();
+                SQLiteDatabase db = markerDBHelper.getReadableDatabase();
+                for(int i = 0; i<BeaconsFound.size(); i++){
+                    Cursor nameCursor = db.rawQuery("SELECT DISTINCT s.stop_name, r.route_short_name,r.route_long_name " +
+                            "FROM trips AS t INNER JOIN stop_times as st " +
+                            "ON t.trip_id = st.trip_id " +
+                            "INNER JOIN routes as r " +
+                            "ON t.route_id = r.route_id " +
+                            "INNER JOIN stops AS s " +
+                            "ON s.stop_id = st.stop_id " +
+                            "WHERE s.stop_id = \"" + BeaconsFound.get(i) + "\"", null);
+                    routeCount = nameCursor.getCount();
+                    if(routeCount > 0){
+                        if(nameCursor.moveToFirst()){
+                            for(int j = 0; j<routeCount; j++){
+                                BusFoundList.add("Bus Number: " + nameCursor.getString(nameCursor.getColumnIndex("route_short_name")) + "\n"
+                                        + "Route: " + nameCursor.getString(nameCursor.getColumnIndex("route_long_name")));
+                                nameCursor.moveToNext();
+                            }
+                        }
+                    }
+                }
+
+            }catch(SQLException sqle){
+                sqle.printStackTrace();
+            }
+            return null;
+        }
+        @Override
+        protected void onPostExecute(Void v){
+            TextView gatheringDataMessage = Messages[1];
+            TextView processingDataMessage = Messages[2];
+            gatheringDataMessage.setText("Gathering Data...Done!");
+            stopAnimation(Messages, 1);
+            if(BusFoundList.size() > 0){
+                processingDataMessage.setVisibility(View.VISIBLE);
+                startAnimation(Messages,2);
+                displayBusList();
+            }
+            else{
+                processingDataMessage.setText("No Buses Found!");
+                processingDataMessage.setVisibility(View.VISIBLE);
+                TextView DoneMessage = Messages[3];
+                DoneMessage.setVisibility(View.VISIBLE);
+            }
+
+        }
+    }
+    public void checkBluetooth() {
+        TextView message = Messages[0];
+        message.setVisibility(View.VISIBLE);
+        startAnimation(Messages, 0);
+        btManager = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
+        btAdapter = btManager.getAdapter();
+        if (btAdapter == null || !btAdapter.isEnabled())
+        {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+        }
+        else
+        {
+            scanForBLE();
+        }
+
+    }
+    public void scanForBLE()
+    {
+        scanLeDevice(true);
+    }
+    private void scanLeDevice(final boolean enable) {
+        if (enable) {
+            // Stops scanning after a pre-defined scan period.
+            btHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    LEscan = false;
+                    btAdapter.stopLeScan(mLeScanCallback);
+                }
+            }, SCAN_PERIOD);
+
+            LEscan = true;
+            btAdapter.startLeScan(mLeScanCallback);
+        } else {
+            LEscan = false;
+            btAdapter.stopLeScan(mLeScanCallback);
+        }
+//	        ...
+    }
+    private BluetoothAdapter.LeScanCallback mLeScanCallback =
+            new BluetoothAdapter.LeScanCallback() {
+                @Override
+                public void onLeScan(final BluetoothDevice device, int rssi,
+                                     byte[] scanRecord)
+                {
+                    if (device.getType() == 2)
+                    {
+                        Log.d("bleScanner", device.toString() + " name: " + device.getName() + " type: " + device.getType() + " RSSI:" + rssi + " Address: " + device.getAddress());
+                        String tempholder = device.getName();
+                        if(!BeaconsFound.contains(tempholder)){
+                            BeaconsFound.add(device.getName());
+                        }
+
+                        Log.d("Beacon Contains: ", Integer.toString(BeaconsFound.size()));
+                    }
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                        }
+                    });
+                }
+            };
+    public void startAnimation(TextView MessageArray[], int position){
+        TextView animateMessage = MessageArray[position];
+        Animation anim = new AlphaAnimation(0.0f,1.0f);
+        anim.setDuration(1000);
+        anim.setStartOffset(20);
+        anim.setRepeatMode(Animation.REVERSE);
+        anim.setRepeatCount(Animation.INFINITE);
+        animateMessage.startAnimation(anim);
+    }
+    public void stopAnimation(TextView MessageArray[], int position){
+        TextView stopMessageanimation = MessageArray[position];
+        stopMessageanimation.clearAnimation();
+    }
+    public void displayBusList(){
+        TextView processingDataMessage = Messages[2];
+        processingDataMessage.setText("Processing Data...Done!");
+        stopAnimation(Messages,2);
+        TextView DoneMessage = Messages[3];
+        DoneMessage.setVisibility(View.VISIBLE);
+    }
     public void onBackPressed(){
         finish();
     }
-
     public void sendMessagetoMap(View view){
-        startActivity(new Intent(this, MapsActivity.class));
+        startActivity(MapData);
     }
 
 

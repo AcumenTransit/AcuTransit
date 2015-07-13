@@ -67,7 +67,7 @@ public class MapsActivity extends FragmentActivity {
     private ProgressDialog dialog;
 
     private String getShape = "";
-    private String busNumber = "17";
+    private String busNumber;
     private String day = "Weekdays";
     private String direction = "0";
 
@@ -198,7 +198,8 @@ public class MapsActivity extends FragmentActivity {
         map.addMarker(new MarkerOptions().position(HOLLOW_PARK).title("Marker"));*/
         for (LinkedHashMap<String, LatLng> inputs : markerPoints){
             for(Map.Entry<String, LatLng> entry : inputs.entrySet()){
-                map.addMarker(new MarkerOptions().position(entry.getValue()).title(entry.getKey()));
+                map.addMarker(new MarkerOptions().position(entry.getValue()).title(entry.getKey())
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.greenpin)));
             }
         }
     }

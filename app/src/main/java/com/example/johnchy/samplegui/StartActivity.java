@@ -3,11 +3,14 @@ package com.example.johnchy.samplegui;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.graphics.drawable.AnimationDrawable;
+import android.os.Handler;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.widget.ImageView;
@@ -15,24 +18,26 @@ import android.widget.TextView;
 
 
 public class StartActivity extends ActionBarActivity {
-    ImageView animatedtext;
+    private Handler ActivityHandler = new Handler();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_start);
-        Typeface fontTypeface = Typeface.createFromAsset(getAssets(),"loaded.ttf");
+        Typeface routeFontface = Typeface.createFromAsset(getAssets(),"route.ttf");
+        Typeface displayFontface = Typeface.createFromAsset(getAssets(), "display.TTF");
         TextView routeTextview = (TextView)findViewById(R.id.routetext);
         TextView displayTextview = (TextView)findViewById(R.id.displaytext);
-        TextView touchTextview = (TextView)findViewById(R.id.touchtext);
-        routeTextview.setTypeface(fontTypeface);
-        displayTextview.setTypeface(fontTypeface);
-        touchTextview.setTypeface(touchTextview.getTypeface(),Typeface.BOLD);
-        Animation anim = new AlphaAnimation(0.0f,1.0f);
-        anim.setDuration(1000);
-        anim.setStartOffset(20);
-        anim.setRepeatMode(Animation.REVERSE);
-        anim.setRepeatCount(Animation.INFINITE);
-        touchTextview.startAnimation(anim);
+        routeTextview.setTypeface(routeFontface);
+        displayTextview.setTypeface(displayFontface);
+        ActivityHandler.postDelayed(new Runnable(){
+            @Override
+            public void run() {
+                startActivity(new Intent(StartActivity.this, ProgressActivity.class));
+                overridePendingTransition(R.anim.lefttorightanimation, R.anim.righttoleftanimation);
+                finish();
+            }
+        },3000);
     }
 
     @Override
@@ -61,9 +66,4 @@ public class StartActivity extends ActionBarActivity {
     public void onBackPressed(){
         finish();
     }
-
-    public void sendMessage(View view){
-        startActivity(new Intent(this, ProgressActivity.class));
-    }
-
 }

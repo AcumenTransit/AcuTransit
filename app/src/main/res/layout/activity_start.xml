@@ -5,8 +5,7 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     android:paddingBottom="@dimen/activity_vertical_margin" tools:context=".StartActivity"
     android:clickable="true"
-    android:background="@drawable/bus"
-    android:onClick="sendMessage">
+    android:background="@drawable/greyradial">
 
     <ImageView
         android:layout_width="100dp"
@@ -38,9 +37,9 @@
         android:text="ROUTE"
         android:textColor="#ff0000"
         android:id="@+id/routetext"
-        android:layout_above="@+id/displaytext"
+        android:layout_below="@+id/imageView4"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="43dp" />
+        android:layout_marginTop="20dp"/>
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -48,16 +47,16 @@
         android:text="DISPLAY"
         android:textColor="#ff8000"
         android:id="@+id/displaytext"
-        android:layout_centerVertical="true"
-        android:layout_centerHorizontal="true" />
-    <TextView
+        android:layout_below="@+id/routetext"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="20dp"/>
+    <ImageView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="TOUCH ANYWHERE TO BEGIN"
-        android:textColor="#009900"
-        android:textSize="20dp"
-        android:id="@+id/touchtext"
-        android:layout_above="@+id/imageView"
-        android:layout_centerHorizontal="true" />
+        android:src="@drawable/bus"
+        android:id="@+id/imageView4"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="30dp"/>
 
 </RelativeLayout>
