@@ -67,7 +67,7 @@
             android:label="@string/title_activity_progress" >
         </activity>
         <activity
-            android:name=".ListBusesActivity"
+            android:name=".ListFoundItemsActivity"
             android:label="@string/title_activity_list_buses" >
         </activity>
     </application>

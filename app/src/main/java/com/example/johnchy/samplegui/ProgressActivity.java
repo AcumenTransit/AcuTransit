@@ -1,107 +1,59 @@
 package com.example.johnchy.samplegui;
 
-import android.animation.ObjectAnimator;
-import android.app.ProgressDialog;
+import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Typeface;
-import android.media.Image;
 import android.os.AsyncTask;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.util.SparseArray;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
 
-import android.annotation.TargetApi;
-import android.app.Activity;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
-import android.bluetooth.BluetoothGattCallback;
-import android.bluetooth.BluetoothGattCharacteristic;
-import android.bluetooth.BluetoothGattService;
-import android.bluetooth.BluetoothManager;
-import android.bluetooth.BluetoothProfile;
-import android.bluetooth.le.BluetoothLeScanner;
-import android.bluetooth.le.ScanCallback;
-import android.bluetooth.le.ScanFilter;
-import android.bluetooth.le.ScanResult;
-import android.bluetooth.le.ScanSettings;
-import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.os.Build;
-import android.os.Bundle;
 import android.os.Handler;
-import android.support.v7.app.ActionBarActivity;
-import android.util.Log;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
-import android.widget.ImageButton;
-import android.widget.RelativeLayout;
-import android.widget.TableLayout;
-import android.widget.TableRow;
 import android.widget.TextView;
-import android.widget.Toast;
-
-import com.google.android.gms.maps.model.LatLng;
-
-import org.w3c.dom.Text;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
-public class ProgressActivity extends ActionBarActivity {
 
-    //private static final UUID BEACON_SERVICE = UUID.fromString("f7826da6-4fa2-4e98-8024-bc5b71e0893e");
+public class ProgressActivity extends Activity {
+
     private BluetoothManager btManager;
     private BluetoothAdapter btAdapter;
     private int REQUEST_ENABLE_BT = 1;
+    boolean LEscan;
     private Handler btHandler = new Handler();
-    private static final long SCAN_PERIOD = 5000;
-    private boolean LEscan;
-    private String ClosestBeacon;
-    private ProgressDialog SetupDialog;
+    private static final long SCAN_PERIOD = 10000;
     private int routeCount = 0;
-    private String route_name;
-    private String bus_number;
-    Intent MapData = new Intent(this, MapsActivity.class);
-
     ArrayList<String> BeaconsFound;
     ArrayList<String> BusFoundList;
+    ArrayList<String> BusNumbers;
     TextView[] Messages = new TextView[4];
-
-
-
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_progress);
-        BeaconsFound = new ArrayList<String>();
-        BusFoundList = new ArrayList<String>();
+        BeaconsFound = new ArrayList<>();
+        BusFoundList = new ArrayList<>();
+        BusNumbers = new ArrayList<>();
         Messages[0] = (TextView) findViewById(R.id.beaconFindprogress);
         Messages[1] = (TextView) findViewById(R.id.gatheringDataprogress);
         Messages[2] = (TextView) findViewById(R.id.processingDataprogress);
         Messages[3] = (TextView) findViewById(R.id.progressDone);
-        checkBluetooth();
+        getBeacons beacons = new getBeacons();
+        beacons.execute();
         getNames Bus = new getNames();
         Bus.execute();
     }
@@ -126,85 +78,26 @@ public class ProgressActivity extends ActionBarActivity {
 
         return super.onOptionsItemSelected(item);
     }
-
-    private class getNames extends AsyncTask<Void, Void, Void> {
-
-        int stopCount = 0;
-        int shapeCount = 0;
-        Context context = getApplicationContext();
-        SQLHelper markerDBHelper = new SQLHelper(context);
-
+    private class getBeacons extends AsyncTask<Void, Void, Void> {
         @Override
         protected void onPreExecute(){
-            TextView beaconMessage = Messages[0];
-            beaconMessage.setText("Looking for beacons...Done!");
-            stopAnimation(Messages, 0);
-            TextView gatheringDataMessage = Messages[1];
-            gatheringDataMessage.setVisibility(View.VISIBLE);
-            startAnimation(Messages, 1);
-
+            TextView message = Messages[0];
+            message.setVisibility(View.VISIBLE);
+            startAnimation(Messages, 0);
         }
         @Override
         protected Void doInBackground(Void... params) {
-            try{
-                markerDBHelper.CreateDatabase();
-            }catch(IOException e)
-            {
-                throw new Error("Unable to create database");
-            }
-            try{
-                markerDBHelper.openDataBase();
-                SQLiteDatabase db = markerDBHelper.getReadableDatabase();
-                for(int i = 0; i<BeaconsFound.size(); i++){
-                    Cursor nameCursor = db.rawQuery("SELECT DISTINCT s.stop_name, r.route_short_name,r.route_long_name " +
-                            "FROM trips AS t INNER JOIN stop_times as st " +
-                            "ON t.trip_id = st.trip_id " +
-                            "INNER JOIN routes as r " +
-                            "ON t.route_id = r.route_id " +
-                            "INNER JOIN stops AS s " +
-                            "ON s.stop_id = st.stop_id " +
-                            "WHERE s.stop_id = \"" + BeaconsFound.get(i) + "\"", null);
-                    routeCount = nameCursor.getCount();
-                    if(routeCount > 0){
-                        if(nameCursor.moveToFirst()){
-                            for(int j = 0; j<routeCount; j++){
-                                BusFoundList.add("Bus Number: " + nameCursor.getString(nameCursor.getColumnIndex("route_short_name")) + "\n"
-                                        + "Route: " + nameCursor.getString(nameCursor.getColumnIndex("route_long_name")));
-                                nameCursor.moveToNext();
-                            }
-                        }
-                    }
-                }
-
-            }catch(SQLException sqle){
-                sqle.printStackTrace();
-            }
+            checkBluetooth();
             return null;
         }
         @Override
-        protected void onPostExecute(Void v){
-            TextView gatheringDataMessage = Messages[1];
-            TextView processingDataMessage = Messages[2];
-            gatheringDataMessage.setText("Gathering Data...Done!");
-            stopAnimation(Messages, 1);
-            if(BusFoundList.size() > 0){
-                processingDataMessage.setVisibility(View.VISIBLE);
-                startAnimation(Messages,2);
-                displayBusList();
-            }
-            else{
-                processingDataMessage.setText("No Buses Found!");
-                processingDataMessage.setVisibility(View.VISIBLE);
-                TextView DoneMessage = Messages[3];
-                DoneMessage.setVisibility(View.VISIBLE);
-            }
-
+        protected  void onPostExecute(Void v){
+            TextView beaconMessage = Messages[0];
+            beaconMessage.setText("Looking for beacons...Done!");
+            stopAnimation(Messages, 0);
         }
     }
     public void checkBluetooth() {
-        TextView message = Messages[0];
-        message.setVisibility(View.VISIBLE);
-        startAnimation(Messages, 0);
         btManager = (BluetoothManager)getSystemService(Context.BLUETOOTH_SERVICE);
         btAdapter = btManager.getAdapter();
         if (btAdapter == null || !btAdapter.isEnabled())
@@ -216,7 +109,11 @@ public class ProgressActivity extends ActionBarActivity {
         {
             scanForBLE();
         }
-
+        try {
+            Thread.sleep(1000);
+        }catch(Exception e){
+            e.printStackTrace();
+        }
     }
     public void scanForBLE()
     {
@@ -264,6 +161,82 @@ public class ProgressActivity extends ActionBarActivity {
                     });
                 }
             };
+    private class getNames extends AsyncTask<Void, Void, Void> {
+        Context context = getApplicationContext();
+        SQLHelper markerDBHelper = new SQLHelper(context);
+        @Override
+        protected void onPreExecute(){
+            TextView gatheringDataMessage = Messages[1];
+            gatheringDataMessage.setVisibility(View.VISIBLE);
+            startAnimation(Messages, 1);
+        }
+        @Override
+        protected Void doInBackground(Void... params) {
+            try{
+                markerDBHelper.CreateDatabase();
+            }catch(IOException e)
+            {
+                throw new Error("Unable to create database");
+            }
+            try{
+                markerDBHelper.openDataBase();
+                SQLiteDatabase db = markerDBHelper.getReadableDatabase();
+                for(int i = 0; i<BeaconsFound.size(); i++){
+                    Cursor nameCursor = db.rawQuery("SELECT DISTINCT s.stop_name, r.route_short_name,r.route_long_name " +
+                            "FROM trips AS t INNER JOIN stop_times as st " +
+                            "ON t.trip_id = st.trip_id " +
+                            "INNER JOIN routes as r " +
+                            "ON t.route_id = r.route_id " +
+                            "INNER JOIN stops AS s " +
+                            "ON s.stop_id = st.stop_id " +
+                            "WHERE st.stop_id = \"" + BeaconsFound.get(i) + "\"", null);
+                    routeCount = nameCursor.getCount();
+                    if(routeCount > 0){
+                        if(nameCursor.moveToFirst()){
+                            for(int j = 0; j<routeCount; j++){
+                                String busnumber = nameCursor.getString(nameCursor.getColumnIndex("route_short_name"));
+                                if(!BusNumbers.contains(busnumber)){
+                                    BusNumbers.add(busnumber);
+                                }
+                                BusFoundList.add("Bus Number: " + busnumber + "\n"
+                                        + "Route: " + nameCursor.getString(nameCursor.getColumnIndex("route_long_name")));
+                                nameCursor.moveToNext();
+                            }
+                        }
+                    }
+                }
+
+            }catch(SQLException sqle){
+                sqle.printStackTrace();
+            }
+            return null;
+        }
+        @Override
+        protected void onPostExecute(Void v){
+            TextView gatheringDataMessage = Messages[1];
+            TextView processingDataMessage = Messages[2];
+            gatheringDataMessage.setText("Gathering Data...Done!");
+            stopAnimation(Messages, 1);
+            if(BusFoundList.size() > 0){
+                processingDataMessage.setVisibility(View.VISIBLE);
+                startAnimation(Messages, 2);
+                displayMessage();
+                sendMessagetoList();
+            }
+            else{
+                processingDataMessage.setText("No Buses Found!");
+                processingDataMessage.setVisibility(View.VISIBLE);
+                TextView DoneMessage = Messages[3];
+                DoneMessage.setVisibility(View.VISIBLE);
+                try {
+                    Thread.sleep(3000);
+                }catch(Exception e){
+                    e.printStackTrace();
+                }
+                sendMessagetoList();
+            }
+        }
+    }
     public void startAnimation(TextView MessageArray[], int position){
         TextView animateMessage = MessageArray[position];
         Animation anim = new AlphaAnimation(0.0f,1.0f);
@@ -277,18 +250,25 @@ public class ProgressActivity extends ActionBarActivity {
         TextView stopMessageanimation = MessageArray[position];
         stopMessageanimation.clearAnimation();
     }
-    public void displayBusList(){
+    public void displayMessage(){
         TextView processingDataMessage = Messages[2];
         processingDataMessage.setText("Processing Data...Done!");
-        stopAnimation(Messages,2);
+        stopAnimation(Messages, 2);
         TextView DoneMessage = Messages[3];
         DoneMessage.setVisibility(View.VISIBLE);
+
     }
     public void onBackPressed(){
         finish();
     }
-    public void sendMessagetoMap(View view){
-        startActivity(MapData);
+    public void sendMessagetoList(){
+        Intent DisplayData = new Intent(getApplicationContext(), ListFoundItemsActivity.class);
+        DisplayData.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        DisplayData.putStringArrayListExtra("BusList", BusFoundList);
+        DisplayData.putStringArrayListExtra("BusNumbers", BusNumbers);
+        startActivity(DisplayData);
+        overridePendingTransition(R.anim.bottom_up_animation, R.anim.bottom_down_animation);
+        finish();
     }
 
 

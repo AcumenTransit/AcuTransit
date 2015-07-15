@@ -1,23 +1,18 @@
 package com.example.johnchy.samplegui;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Typeface;
-import android.graphics.drawable.AnimationDrawable;
 import android.os.Handler;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.view.Window;
-import android.view.WindowManager;
-import android.view.animation.AlphaAnimation;
-import android.view.animation.Animation;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 
-public class StartActivity extends ActionBarActivity {
+public class StartActivity extends Activity {
     private Handler ActivityHandler = new Handler();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,14 +25,14 @@ public class StartActivity extends ActionBarActivity {
         TextView displayTextview = (TextView)findViewById(R.id.displaytext);
         routeTextview.setTypeface(routeFontface);
         displayTextview.setTypeface(displayFontface);
-        ActivityHandler.postDelayed(new Runnable(){
+        ActivityHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 startActivity(new Intent(StartActivity.this, ProgressActivity.class));
-                overridePendingTransition(R.anim.lefttorightanimation, R.anim.righttoleftanimation);
+                overridePendingTransition(R.anim.left_right_animation, R.anim.right_left_animation);
                 finish();
             }
-        },3000);
+        }, 3000);
     }
 
     @Override

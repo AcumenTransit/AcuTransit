@@ -4,6 +4,7 @@ package com.example.johnchy.samplegui;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
@@ -58,15 +59,14 @@ public class MapsActivity extends FragmentActivity {
 
 
     private GoogleMap map; // Might be null if Google Play services APK is not available.
-    ArrayList<LinkedHashMap<String, LatLng>> markerPoints = new ArrayList<LinkedHashMap<String, LatLng>>();
-    ArrayList<LatLng> shape = new ArrayList<LatLng>();
+    ArrayList<LinkedHashMap<String, LatLng>> markerPoints = new ArrayList<>();
+    ArrayList<LatLng> shape = new ArrayList<>();
+    ArrayList<ArrayList<LatLng>> fullshape = new ArrayList<>();
+    ArrayList<String> getShape = new ArrayList<>();
+    ArrayList<LatLng>RoutePositions = new ArrayList<>();
     private static final LatLng SAN_JOSE = new LatLng(37.3394, -121.89389);
-    private final double degreesPerRadian = 180.0 / Math.PI;
-    //private static final LatLng ROSE_GARDEN = new LatLng(37.3322,-121.9281);
-    //private static final LatLng HOLLOW_PARK = new LatLng(37.3257, -121.8621);
     private ProgressDialog dialog;
-
-    private String getShape = "";
+    private String shape_id = "";
     private String busNumber;
     private String day = "Weekdays";
     private String direction = "0";
@@ -75,6 +75,7 @@ public class MapsActivity extends FragmentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
+        busNumber = getIntent().getStringExtra("busNumber");
         setUpMapIfNeeded();
     }
 
@@ -123,7 +124,7 @@ public class MapsActivity extends FragmentActivity {
         @Override
         protected void onPreExecute(){
             dialog = new ProgressDialog(MapsActivity.this);
-            dialog.setMessage("Downloading data, please wait...");
+            dialog.setMessage("Routing, please wait...");
             dialog.show();
             dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
                 @Override
@@ -140,43 +141,49 @@ public class MapsActivity extends FragmentActivity {
             {
                 throw new Error("Unable to create database");
             }
-            try{
+            try {
                 markerDBHelper.openDataBase();
                 SQLiteDatabase db = markerDBHelper.getReadableDatabase();
-                Cursor stopCursor = db.rawQuery("SELECT DISTINCT s.stop_name, s.stop_lat, s.stop_lon, shape_id " +
+                Cursor stopCursor = db.rawQuery("SELECT DISTINCT s.stop_name, s.stop_lat, s.stop_lon, t.shape_id " +
                         "FROM trips as t INNER JOIN stop_times as st " +
                         "ON st.trip_id = t.trip_id " +
                         "INNER JOIN stops as s ON s.stop_id = st.stop_id " +
                         "WHERE route_id = " + "\"" + busNumber + "\"" + " AND t.service_id = " + "\"" + day + "\"" + " AND t.direction_id = " +
-                        "\"" + direction + "\"",null);
+                        "\"" + direction + "\"", null);
                 stopCount = stopCursor.getCount();
-                if(stopCount > 0)
-                {
-                    if(stopCursor.moveToFirst()){
-                        getShape = stopCursor.getString(stopCursor.getColumnIndex("shape_id"));
-                        for(int i = 0; i<stopCount; i++)
-                        {
+                if (stopCount > 0) {
+                    if (stopCursor.moveToFirst()) {
+                        for (int i = 0; i < stopCount; i++) {
+                            shape_id = stopCursor.getString(stopCursor.getColumnIndex("shape_id"));
+                            if (!getShape.contains(shape_id)) {
+                                getShape.add(shape_id);
+                            }
                             LinkedHashMap<String, LatLng> input = new LinkedHashMap<>();
-                            LatLng coordinates = new LatLng(Double.parseDouble(stopCursor.getString(stopCursor.getColumnIndex("stop_lat"))), Double.parseDouble(stopCursor.getString(stopCursor.getColumnIndex("stop_lon"))));
+                            LatLng coordinates = new LatLng(Double.parseDouble(stopCursor.getString(stopCursor.getColumnIndex("stop_lat"))),
+                                    Double.parseDouble(stopCursor.getString(stopCursor.getColumnIndex("stop_lon"))));
                             input.put(stopCursor.getString(stopCursor.getColumnIndex("stop_name")), coordinates);
                             markerPoints.add(input);
                             stopCursor.moveToNext();
                         }
                     }
                 }
-               Cursor shapeCursor = db.rawQuery("SELECT shape_pt_lat, shape_pt_lon FROM shapes " +
-                       "WHERE shape_id = \"" + getShape + "\" ORDER BY CAST(shape_pt_sequence AS INTEGER)", null);
-                shapeCount = shapeCursor.getCount();
-                if(shapeCount > 0){
-                    if(shapeCursor.moveToFirst()){
-                        for(int i = 0; i<shapeCount; i++){
-                            LatLng path = new LatLng(
-                                    Double.parseDouble(shapeCursor.getString(shapeCursor.getColumnIndex("shape_pt_lat"))),
-                                    Double.parseDouble(shapeCursor.getString(shapeCursor.getColumnIndex("shape_pt_lon"))));
-                            shape.add(path);
-                            shapeCursor.moveToNext();
+                for (int i = 0; i < getShape.size(); i++) {
+                    ArrayList<LatLng> points = new ArrayList<>();
+                    Cursor shapeCursor = db.rawQuery("SELECT shape_pt_lat, shape_pt_lon FROM shapes " +
+                            "WHERE shape_id = \"" + getShape.get(i) + "\" ORDER BY CAST(shape_pt_sequence AS INTEGER)", null);
+                    shapeCount = shapeCursor.getCount();
+                    if (shapeCount > 0) {
+                        if (shapeCursor.moveToFirst()) {
+                            for (int j = 0; j < shapeCount; j++) {
+                                LatLng path = new LatLng(
+                                        Double.parseDouble(shapeCursor.getString(shapeCursor.getColumnIndex("shape_pt_lat"))),
+                                        Double.parseDouble(shapeCursor.getString(shapeCursor.getColumnIndex("shape_pt_lon"))));
+                                points.add(path);
+                                shapeCursor.moveToNext();
+                            }
                         }
                     }
+                    fullshape.add(points);
                 }
             }catch(SQLException sqle){
                 sqle.printStackTrace();
@@ -186,16 +193,14 @@ public class MapsActivity extends FragmentActivity {
 
         @Override
         protected void onPostExecute(Void v){
-            dialog.dismiss();
             setUpMarkers(markerPoints);
             setBounds(markerPoints);
-            createRoute(shape);
+            createfullRoute(fullshape);
+            dialog.dismiss();
         }
     }
 
     private void setUpMarkers(ArrayList<LinkedHashMap<String, LatLng>> points){
-        /*map.addMarker(new MarkerOptions().position(ROSE_GARDEN).title("Marker"));
-        map.addMarker(new MarkerOptions().position(HOLLOW_PARK).title("Marker"));*/
         for (LinkedHashMap<String, LatLng> inputs : markerPoints){
             for(Map.Entry<String, LatLng> entry : inputs.entrySet()){
                 map.addMarker(new MarkerOptions().position(entry.getValue()).title(entry.getKey())
@@ -203,7 +208,12 @@ public class MapsActivity extends FragmentActivity {
             }
         }
     }
-
+    private void createfullRoute(ArrayList<ArrayList<LatLng>> allpoints){
+        for(int i = 0; i< allpoints.size(); i++){
+            RoutePositions = allpoints.get(i);
+            createRoute(RoutePositions);
+        }
+    }
     private void createRoute(ArrayList<LatLng> points){
         for (int i = 0; i < points.size() - 1; i++) {
             LatLng src = points.get(i);
@@ -230,7 +240,11 @@ public class MapsActivity extends FragmentActivity {
         CameraUpdate cu = CameraUpdateFactory.newLatLngZoom(bounds.getCenter(), 14F);
         map.animateCamera(cu);
     }
-
+    public void onBackPressed(){
+        startActivity(new Intent(MapsActivity.this, ProgressActivity.class));
+        overridePendingTransition(R.anim.left_right_animation, R.anim.right_left_animation);
+        finish();
+    }
 
 
 
@@ -254,5 +268,6 @@ public class MapsActivity extends FragmentActivity {
         //markerPoints.put("ROSE GARDEN", ROSE_GARDEN);
         addMarkers MarkerSetforRoute = new addMarkers();
         MarkerSetforRoute.execute();
+
     }
 }

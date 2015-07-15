@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:weightSum="1">
+    <ImageView
+        android:id="@+id/icon"
+        android:layout_width="31dp"
+        android:layout_height="69dp"
+        android:src="@drawable/bus_row"
+        android:layout_weight="0.10"/>
+    <TextView
+        android:id="@+id/businfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:drawablePadding="20dp"
+        android:layout_centerVertical="true"
+        android:layout_toRightOf="@+id/icon"
+        android:layout_toEndOf="@+id/icon" />
+</RelativeLayout>
