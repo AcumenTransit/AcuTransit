@@ -10,6 +10,7 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
+import android.os.Parcelable;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -37,24 +38,26 @@ public class ProgressActivity extends Activity {
     private static final long SCAN_PERIOD = 10000;
     private int routeCount = 0;
     ArrayList<String> BeaconsFound;
-    ArrayList<String> BusFoundList;
-    ArrayList<String> BusNumbers;
+    ArrayList<BusInfo> BusInformation;
     TextView[] Messages = new TextView[4];
+    public static String BUS_LIST_EXTRA = "BusList";
+
+    getNames Bus;
+    getBeacons beacons;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_progress);
         BeaconsFound = new ArrayList<>();
-        BusFoundList = new ArrayList<>();
-        BusNumbers = new ArrayList<>();
+        BusInformation = new ArrayList<>();
         Messages[0] = (TextView) findViewById(R.id.beaconFindprogress);
         Messages[1] = (TextView) findViewById(R.id.gatheringDataprogress);
         Messages[2] = (TextView) findViewById(R.id.processingDataprogress);
         Messages[3] = (TextView) findViewById(R.id.progressDone);
-        getBeacons beacons = new getBeacons();
+        beacons = new getBeacons();
         beacons.execute();
-        getNames Bus = new getNames();
+        Bus = new getNames();
         Bus.execute();
     }
     @Override
@@ -77,6 +80,13 @@ public class ProgressActivity extends Activity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+    @Override
+    public void onBackPressed(){
+        super.onBackPressed();
+        beacons.cancel(true);
+        Bus.cancel(true);
+        finish();
     }
     private class getBeacons extends AsyncTask<Void, Void, Void> {
         @Override
@@ -182,24 +192,26 @@ public class ProgressActivity extends Activity {
                 markerDBHelper.openDataBase();
                 SQLiteDatabase db = markerDBHelper.getReadableDatabase();
                 for(int i = 0; i<BeaconsFound.size(); i++){
-                    Cursor nameCursor = db.rawQuery("SELECT DISTINCT s.stop_name, r.route_short_name,r.route_long_name " +
-                            "FROM trips AS t INNER JOIN stop_times as st " +
+                    Cursor nameCursor = db.rawQuery("SELECT DISTINCT r.route_short_name,r.route_long_name " +
+                            "FROM stop_times st INNER JOIN trips t " +
                             "ON t.trip_id = st.trip_id " +
-                            "INNER JOIN routes as r " +
-                            "ON t.route_id = r.route_id " +
-                            "INNER JOIN stops AS s " +
-                            "ON s.stop_id = st.stop_id " +
+                            "INNER JOIN routes r " +
+                            "ON r.route_id = t.route_id " +
                             "WHERE st.stop_id = \"" + BeaconsFound.get(i) + "\"", null);
                     routeCount = nameCursor.getCount();
                     if(routeCount > 0){
                         if(nameCursor.moveToFirst()){
                             for(int j = 0; j<routeCount; j++){
-                                String busnumber = nameCursor.getString(nameCursor.getColumnIndex("route_short_name"));
+                                BusInfo newBus = new BusInfo();
+                                if(!BusInformation.contains(newBus)){
+                                    BusInformation.add(newBus);
+                                }
+                                newBus.setBusNumber(nameCursor.getString(nameCursor.getColumnIndex("route_short_name")));
+                                newBus.setRouteName(nameCursor.getString(nameCursor.getColumnIndex("route_long_name")));
+                                /*String busnumber = nameCursor.getString(nameCursor.getColumnIndex("route_short_name"));
                                 if(!BusNumbers.contains(busnumber)){
                                     BusNumbers.add(busnumber);
-                                }
-                                BusFoundList.add("Bus Number: " + busnumber + "\n"
-                                        + "Route: " + nameCursor.getString(nameCursor.getColumnIndex("route_long_name")));
+                                }*/
                                 nameCursor.moveToNext();
                             }
                         }
@@ -217,7 +229,7 @@ public class ProgressActivity extends Activity {
             TextView processingDataMessage = Messages[2];
             gatheringDataMessage.setText("Gathering Data...Done!");
             stopAnimation(Messages, 1);
-            if(BusFoundList.size() > 0){
+            if(BusInformation.size() > 0){
                 processingDataMessage.setVisibility(View.VISIBLE);
                 startAnimation(Messages, 2);
                 displayMessage();
@@ -258,14 +270,13 @@ public class ProgressActivity extends Activity {
         DoneMessage.setVisibility(View.VISIBLE);
 
     }
-    public void onBackPressed(){
-        finish();
-    }
     public void sendMessagetoList(){
         Intent DisplayData = new Intent(getApplicationContext(), ListFoundItemsActivity.class);
         DisplayData.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        DisplayData.putStringArrayListExtra("BusList", BusFoundList);
-        DisplayData.putStringArrayListExtra("BusNumbers", BusNumbers);
+        //DisplayData.putStringArrayListExtra("BusList", BusFoundList);
+        Bundle bundle = new Bundle();
+        bundle.putParcelableArrayList(BUS_LIST_EXTRA, (ArrayList<? extends Parcelable>) BusInformation);
+        DisplayData.putExtras(bundle);
         startActivity(DisplayData);
         overridePendingTransition(R.anim.bottom_up_animation, R.anim.bottom_down_animation);
         finish();

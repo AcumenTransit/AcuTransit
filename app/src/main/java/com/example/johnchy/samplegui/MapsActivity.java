@@ -8,16 +8,14 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
-import android.graphics.Rect;
 import android.os.AsyncTask;
-import android.os.StrictMode;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.Window;
+import android.widget.TextView;
 
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -27,32 +25,15 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.StatusLine;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.Calendar;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 public class MapsActivity extends FragmentActivity {
@@ -60,22 +41,46 @@ public class MapsActivity extends FragmentActivity {
 
     private GoogleMap map; // Might be null if Google Play services APK is not available.
     ArrayList<LinkedHashMap<String, LatLng>> markerPoints = new ArrayList<>();
-    ArrayList<LatLng> shape = new ArrayList<>();
-    ArrayList<ArrayList<LatLng>> fullshape = new ArrayList<>();
+    ArrayList<ArrayList<LatLng>> routeShape = new ArrayList<>();
     ArrayList<String> getShape = new ArrayList<>();
     ArrayList<LatLng>RoutePositions = new ArrayList<>();
     private static final LatLng SAN_JOSE = new LatLng(37.3394, -121.89389);
     private ProgressDialog dialog;
     private String shape_id = "";
     private String busNumber;
-    private String day = "Weekdays";
     private String direction = "0";
+    public class InfoAdapter implements GoogleMap.InfoWindowAdapter {
+        LayoutInflater inflater = null;
+        private TextView textViewTitle;
+
+        public InfoAdapter(LayoutInflater inflater) {
+            this.inflater = inflater;
+        }
+
+        @Override
+        public View getInfoWindow(Marker marker) {
+            View v = inflater.inflate(R.layout.businfo_layout, null);
+            if (marker != null) {
+                textViewTitle = (TextView) v.findViewById(R.id.businfo);
+                textViewTitle.setText(marker.getTitle());
+            }
+            return (v);
+        }
+
+        @Override
+        public View getInfoContents(Marker marker) {
+            return (null);
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().requestFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
         setContentView(R.layout.activity_maps);
         busNumber = getIntent().getStringExtra("busNumber");
+        addMarkers MarkerSetforRoute = new addMarkers();
+        MarkerSetforRoute.execute();
         setUpMapIfNeeded();
     }
 
@@ -85,22 +90,20 @@ public class MapsActivity extends FragmentActivity {
         setUpMapIfNeeded();
     }
 
-    /**
-     * Sets up the map if it is possible to do so (i.e., the Google Play services APK is correctly
-     * installed) and the map has not already been instantiated.. This will ensure that we only ever
-     * call {@link #setUpMap()} once when {@link #map} is not null.
-     * <p/>
-     * If it isn't installed {@link SupportMapFragment} (and
-     * {@link com.google.android.gms.maps.MapView MapView}) will show a prompt for the user to
-     * install/update the Google Play services APK on their device.
-     * <p/>
-     * A user can return to this FragmentActivity after following the prompt and correctly
-     * installing/updating/enabling the Google Play services. Since the FragmentActivity may not
-     * have been completely destroyed during this process (it is likely that it would only be
-     * stopped or paused), {@link #onCreate(Bundle)} may not be called again so we should call this
-     * method in {@link #onResume()} to guarantee that it will be called.
-     */
-
+    public String setDay(){
+        Calendar c = Calendar.getInstance();
+        int dayofweek = c.get(Calendar.DAY_OF_WEEK);
+        if((dayofweek >= Calendar.MONDAY) && (dayofweek <= Calendar.FRIDAY)){
+            return "Weekdays";
+        }
+        else if(dayofweek == Calendar.SATURDAY){
+            return "Saturday";
+        }
+        else
+        {
+            return "Sunday";
+        }
+    }
     private void setUpMapIfNeeded() {
         // Do a null check to confirm that we have not already instantiated the map.
         if (map == null) {
@@ -148,7 +151,7 @@ public class MapsActivity extends FragmentActivity {
                         "FROM trips as t INNER JOIN stop_times as st " +
                         "ON st.trip_id = t.trip_id " +
                         "INNER JOIN stops as s ON s.stop_id = st.stop_id " +
-                        "WHERE route_id = " + "\"" + busNumber + "\"" + " AND t.service_id = " + "\"" + day + "\"" + " AND t.direction_id = " +
+                        "WHERE route_id = " + "\"" + busNumber + "\"" + " AND t.service_id = " + "\"" + setDay() + "\"" + " AND t.direction_id = " +
                         "\"" + direction + "\"", null);
                 stopCount = stopCursor.getCount();
                 if (stopCount > 0) {
@@ -183,7 +186,7 @@ public class MapsActivity extends FragmentActivity {
                             }
                         }
                     }
-                    fullshape.add(points);
+                    routeShape.add(points);
                 }
             }catch(SQLException sqle){
                 sqle.printStackTrace();
@@ -193,20 +196,26 @@ public class MapsActivity extends FragmentActivity {
 
         @Override
         protected void onPostExecute(Void v){
+            createRouteTitle();
             setUpMarkers(markerPoints);
             setBounds(markerPoints);
-            createfullRoute(fullshape);
+            createfullRoute(routeShape);
             dialog.dismiss();
         }
     }
 
+    private void createRouteTitle(){
+
+    }
     private void setUpMarkers(ArrayList<LinkedHashMap<String, LatLng>> points){
-        for (LinkedHashMap<String, LatLng> inputs : markerPoints){
-            for(Map.Entry<String, LatLng> entry : inputs.entrySet()){
+        map.setInfoWindowAdapter(new InfoAdapter(getLayoutInflater()));
+        for (LinkedHashMap<String, LatLng> inputs : points){
+            for(final Map.Entry<String, LatLng> entry : inputs.entrySet()){
                 map.addMarker(new MarkerOptions().position(entry.getValue()).title(entry.getKey())
-                .icon(BitmapDescriptorFactory.fromResource(R.drawable.greenpin)));
+                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.greenpin)));
             }
         }
+
     }
     private void createfullRoute(ArrayList<ArrayList<LatLng>> allpoints){
         for(int i = 0; i< allpoints.size(); i++){
@@ -227,9 +236,9 @@ public class MapsActivity extends FragmentActivity {
         }
 
     }
-
     private void setBounds(ArrayList<LinkedHashMap<String, LatLng>> points){
-        int padding = 0;
+        int padding = 30;
+        int width = getResources().getDisplayMetrics().widthPixels;
         LatLngBounds.Builder builder = new LatLngBounds.Builder();
         for (LinkedHashMap<String, LatLng> inputs : markerPoints){
             for(Map.Entry<String, LatLng> entry : inputs.entrySet()){
@@ -237,24 +246,19 @@ public class MapsActivity extends FragmentActivity {
             }
         }
         LatLngBounds bounds = builder.build();
-        CameraUpdate cu = CameraUpdateFactory.newLatLngZoom(bounds.getCenter(), 14F);
+        CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, width,width,padding);
+        map.moveCamera(cu);
         map.animateCamera(cu);
     }
     public void onBackPressed(){
-        startActivity(new Intent(MapsActivity.this, ProgressActivity.class));
+        Intent DisplayData = new Intent(getApplicationContext(), ProgressActivity.class);
+        DisplayData.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(DisplayData);
         overridePendingTransition(R.anim.left_right_animation, R.anim.right_left_animation);
         finish();
     }
-
-
-
-    /*
-      This is where we can add markers or lines, add listeners or move the camera.
-      <p/>
-      This should only be called once and when we are sure that {@link #map} is not null.
-     */
-
     private void setUpMap() {
+        map.getUiSettings().setCompassEnabled(false);
         CameraPosition cameraPosition = new CameraPosition.Builder()
                 .target(SAN_JOSE)
                 .zoom(13)
@@ -262,12 +266,7 @@ public class MapsActivity extends FragmentActivity {
                 .tilt(30)
                 .build();
         map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
-        /*markerPoints.add(ROSE_GARDEN);
-        markerPoints.add(SAN_JOSE);
-        markerPoints.add(HOLLOW_PARK);*/
-        //markerPoints.put("ROSE GARDEN", ROSE_GARDEN);
-        addMarkers MarkerSetforRoute = new addMarkers();
-        MarkerSetforRoute.execute();
 
     }
+
 }

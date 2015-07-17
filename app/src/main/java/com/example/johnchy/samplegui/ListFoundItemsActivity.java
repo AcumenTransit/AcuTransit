@@ -1,40 +1,39 @@
 package com.example.johnchy.samplegui;
 
 import android.app.Activity;
-import android.app.ListActivity;
 import android.content.Intent;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.support.v7.internal.widget.AdapterViewCompat;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewDebug;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 
 public class ListFoundItemsActivity extends Activity {
-
+    ArrayList<String> BusFoundList;
     private ListView list;
+    public static String BUS_LIST_EXTRA = "BusList";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_list_buses);
-        final ArrayList<String> foundItems =  getIntent().getStringArrayListExtra("BusList");
-        final ArrayList<String> foundNumbers = getIntent().getStringArrayListExtra("BusNumbers");
+       // final ArrayList<String> foundItems =  getIntent().getStringArrayListExtra("BusList");
+        BusFoundList = new ArrayList<>();
+        final ArrayList<BusInfo> foundInfo = getIntent().getExtras().getParcelableArrayList(BUS_LIST_EXTRA);
         list = (ListView) findViewById(R.id.found_items_list);
-        if(foundItems.size() > 0){
+        if(foundInfo.size() > 0){
+            for(int i = 0; i<foundInfo.size();i++){
+                BusFoundList.add("Bus Number: " + foundInfo.get(i).getBusNumber() + "\n"
+                        + "Route: " + foundInfo.get(i).getRouteName());
+            }
             ArrayAdapter<String> arrayAdapter = new ArrayAdapter<>(this,
-                    R.layout.listrow, R.id.businfo, foundItems);
+                    R.layout.listrow_layout, R.id.businfo, BusFoundList);
             list.setAdapter(arrayAdapter);
             list.setTextFilterEnabled(true);
             list.setVisibility(View.VISIBLE);
@@ -53,10 +52,11 @@ public class ListFoundItemsActivity extends Activity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Intent DisplayMap = new Intent(getApplicationContext(), MapsActivity.class);
-                String busToroute = foundNumbers.get(position);
-                DisplayMap.putExtra("busNumber",busToroute);
+                DisplayMap.putExtra("busNumber",foundInfo.get(position).getBusNumber());
+                DisplayMap.putExtra("routeName",foundInfo.get(position).getRouteName());
                 DisplayMap.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(DisplayMap);
+                finish();
             }
         });
     }

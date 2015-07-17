@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:weightSum="1"
+    android:background="@drawable/businfo_dialog">
+
+    <ImageView
+        android:id="@+id/busicon"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:src="@drawable/busstop_icon"/>
+    <ImageView
+        android:id="@+id/clockicon"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_below="@+id/busicon"
+        android:layout_alignParentLeft="true"
+        android:paddingLeft="5dp"
+        android:src="@drawable/clock"
+        android:paddingBottom="10dp"/>
+
+    <TextView
+        android:id="@+id/businfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#FFFFFFFF"
+        android:drawablePadding="10dp"
+        android:layout_centerVertical="true"
+        android:layout_toRightOf="@+id/busicon"
+        android:layout_toEndOf="@+id/busicon"
+        android:paddingRight="10dp"
+        android:paddingTop="5dp"
+        android:layout_alignParentTop="true" />
+</RelativeLayout>
