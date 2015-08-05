@@ -2,4 +2,7 @@
     <!-- Default screen margins, per the Android Design guidelines. -->
     <dimen name="activity_horizontal_margin">16dp</dimen>
     <dimen name="activity_vertical_margin">16dp</dimen>
+    <!-- Where to shift the map center when user taps on marker -->
+    <dimen name="map_dx">-1dp</dimen>
+    <dimen name="map_dy">-100dp</dimen>
 </resources>

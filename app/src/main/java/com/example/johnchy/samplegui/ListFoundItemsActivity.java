@@ -1,8 +1,11 @@
 package com.example.johnchy.samplegui;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.Layout;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -13,24 +16,25 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.List;
 
 
 public class ListFoundItemsActivity extends Activity {
     ArrayList<String> BusFoundList;
     private ListView list;
+    private String directionId = "";
     public static String BUS_LIST_EXTRA = "BusList";
+    String directions[] ={"Northbound","Southbound","Westbound","Eastbound"};
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_list_buses);
-       // final ArrayList<String> foundItems =  getIntent().getStringArrayListExtra("BusList");
         BusFoundList = new ArrayList<>();
         final ArrayList<BusInfo> foundInfo = getIntent().getExtras().getParcelableArrayList(BUS_LIST_EXTRA);
         list = (ListView) findViewById(R.id.found_items_list);
         if(foundInfo.size() > 0){
             for(int i = 0; i<foundInfo.size();i++){
-                BusFoundList.add("Bus Number: " + foundInfo.get(i).getBusNumber() + "\n"
-                        + "Route: " + foundInfo.get(i).getRouteName());
+                BusFoundList.add(foundInfo.get(i).getTripHeadsign());
             }
             ArrayAdapter<String> arrayAdapter = new ArrayAdapter<>(this,
                     R.layout.listrow_layout, R.id.businfo, BusFoundList);
@@ -50,13 +54,38 @@ public class ListFoundItemsActivity extends Activity {
         }
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Intent DisplayMap = new Intent(getApplicationContext(), MapsActivity.class);
-                DisplayMap.putExtra("busNumber",foundInfo.get(position).getBusNumber());
-                DisplayMap.putExtra("routeName",foundInfo.get(position).getRouteName());
-                DisplayMap.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(DisplayMap);
-                finish();
+            public void onItemClick(AdapterView<?> parent, View view, final int outerposition, long id) {
+
+
+                final AlertDialog.Builder directionDialog = new AlertDialog.Builder(ListFoundItemsActivity.this);
+                LayoutInflater inflater = getLayoutInflater();
+                View convertView = inflater.inflate(R.layout.direction_list_layout, null);
+                directionDialog.setView(convertView);
+                directionDialog.setTitle("Choose a direction:");
+                ListView lv = (ListView) convertView.findViewById(R.id.direction_listview);
+                ArrayAdapter<String> adapter = new ArrayAdapter<>(ListFoundItemsActivity.this, android.R.layout.simple_list_item_1, directions);
+                lv.setAdapter(adapter);
+                final AlertDialog dlg = directionDialog.show();
+                lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                        if (directions[position].equals("Northbound") || directions[position].equals("Westbound")) {
+                            directionId = "0";
+                        } else {
+                            directionId = "1";
+                        }
+                        Intent DisplayMap = new Intent(getApplicationContext(), MapsActivity.class);
+                        DisplayMap.putExtra("StopNumber", foundInfo.get(outerposition).getStopNumber());
+                        DisplayMap.putExtra("busNumber", foundInfo.get(outerposition).getBusNumber());
+                        DisplayMap.putExtra("tripHeadsign", foundInfo.get(outerposition).getTripHeadsign());
+                        DisplayMap.putExtra("directionId", directionId);
+                        DisplayMap.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(DisplayMap);
+                        dlg.dismiss();
+                        finish();
+                    }
+                });
+
             }
         });
     }

@@ -10,8 +10,6 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
-import android.os.Parcelable;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -192,7 +190,7 @@ public class ProgressActivity extends Activity {
                 markerDBHelper.openDataBase();
                 SQLiteDatabase db = markerDBHelper.getReadableDatabase();
                 for(int i = 0; i<BeaconsFound.size(); i++){
-                    Cursor nameCursor = db.rawQuery("SELECT DISTINCT r.route_short_name,r.route_long_name " +
+                    Cursor nameCursor = db.rawQuery("SELECT DISTINCT t.trip_headsign, r.route_short_name,r.route_long_name " +
                             "FROM stop_times st INNER JOIN trips t " +
                             "ON t.trip_id = st.trip_id " +
                             "INNER JOIN routes r " +
@@ -206,12 +204,9 @@ public class ProgressActivity extends Activity {
                                 if(!BusInformation.contains(newBus)){
                                     BusInformation.add(newBus);
                                 }
+                                newBus.setStopNumber(BeaconsFound.get(i));
                                 newBus.setBusNumber(nameCursor.getString(nameCursor.getColumnIndex("route_short_name")));
-                                newBus.setRouteName(nameCursor.getString(nameCursor.getColumnIndex("route_long_name")));
-                                /*String busnumber = nameCursor.getString(nameCursor.getColumnIndex("route_short_name"));
-                                if(!BusNumbers.contains(busnumber)){
-                                    BusNumbers.add(busnumber);
-                                }*/
+                                newBus.setTripHeadsign(nameCursor.getString(nameCursor.getColumnIndex("trip_headsign")));
                                 nameCursor.moveToNext();
                             }
                         }
@@ -273,9 +268,8 @@ public class ProgressActivity extends Activity {
     public void sendMessagetoList(){
         Intent DisplayData = new Intent(getApplicationContext(), ListFoundItemsActivity.class);
         DisplayData.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        //DisplayData.putStringArrayListExtra("BusList", BusFoundList);
         Bundle bundle = new Bundle();
-        bundle.putParcelableArrayList(BUS_LIST_EXTRA, (ArrayList<? extends Parcelable>) BusInformation);
+        bundle.putParcelableArrayList(BUS_LIST_EXTRA, BusInformation);
         DisplayData.putExtras(bundle);
         startActivity(DisplayData);
         overridePendingTransition(R.anim.bottom_up_animation, R.anim.bottom_down_animation);

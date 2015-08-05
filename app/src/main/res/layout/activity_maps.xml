@@ -8,26 +8,32 @@
         tools:context="com.example.johnchy.samplegui.MapsActivity"
         android:name="com.google.android.gms.maps.SupportMapFragment" />
     <RelativeLayout
-        android:id="@+id/infolayout"
+        android:id="@+id/titlelayout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="20dp"
         android:background="@drawable/mapinfoborder"
         android:visibility="invisible">
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/routeInfotext"
-        android:textColor="#ffffffff"
-        android:textSize="20dp"
-        android:textStyle="bold"
-        android:drawableLeft="@drawable/bus_info"
-        android:drawablePadding="20dp"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true" />
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/routetitleicon"
+            android:src="@drawable/bus_info"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/routeInfotitle"
+            android:textColor="#ffffffff"
+            android:textSize="20dp"
+            android:textStyle="bold"
+            android:layout_toRightOf="@+id/routetitleicon"
+            android:layout_toEndOf="@+id/routetitleicon"
+            android:layout_centerVertical="true"
+            android:layout_centerHorizontal="true"
+            android:layout_alignParentTop="true"
+            android:paddingTop="20dp"
+            android:paddingRight="10dp"/>
     </RelativeLayout>
 
 </RelativeLayout>

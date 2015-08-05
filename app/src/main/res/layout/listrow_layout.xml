@@ -17,5 +17,8 @@
         android:drawablePadding="20dp"
         android:layout_centerVertical="true"
         android:layout_toRightOf="@+id/icon"
-        android:layout_toEndOf="@+id/icon" />
+        android:layout_toEndOf="@+id/icon"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        style="@style/InfoOverlayText"/>
 </RelativeLayout>

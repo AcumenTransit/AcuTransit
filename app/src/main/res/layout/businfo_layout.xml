@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
     android:orientation="horizontal"
     android:weightSum="1"
     android:background="@drawable/businfo_dialog">
@@ -33,4 +33,43 @@
         android:paddingRight="10dp"
         android:paddingTop="5dp"
         android:layout_alignParentTop="true" />
+
+    <TextView
+        android:id="@+id/arrivalinfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#FFFFFFFF"
+        android:drawablePadding="10dp"
+        android:layout_centerVertical="true"
+        android:layout_below="@+id/businfo"
+        android:layout_toRightOf="@+id/clockicon"
+        android:layout_toEndOf="@+id/clockicon"
+        android:paddingRight="10dp"
+        android:paddingTop="5dp"
+        android:textStyle="bold"/>
+    <TextView
+        android:id="@+id/placesinfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/arrivalinfo"
+        android:paddingTop="5dp"
+        android:paddingBottom="35dp"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
+        android:textColor="#0099cc"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true"
+        android:text="@string/more_info"/>
+    <TextView
+        android:id="@+id/eta_item"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@+id/arrivalinfo"
+        android:layout_toEndOf="@+id/arrivalinfo"
+        android:paddingLeft="5dp"
+        android:paddingTop="5dp"
+        android:layout_alignTop="@+id/arrivalinfo"
+        android:text="ETA:"
+        android:textStyle="bold"
+        android:textColor="#FFFFFFFF"/>
 </RelativeLayout>

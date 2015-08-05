@@ -3,38 +3,41 @@ package com.example.johnchy.samplegui;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import java.util.Calendar;
-
-/**
- * Created by john.chy on 7/16/2015.
- */
 public class BusInfo implements Parcelable{
     private String BusNumber;
-    private String RouteName;
+    private String StopNumber;
+    private String TripHeadsign;
 
     public BusInfo(){
         super();
     }
 
     public BusInfo(Parcel p){
-        String[] data = new String[2];
+        String[] data = new String[3];
         p.readStringArray(data);
         this.BusNumber = data[0];
-        this.RouteName = data[1];
+        this.StopNumber = data[1];
+        this.TripHeadsign = data[2];
     }
 
     public void setBusNumber(String BusNumber){
         this.BusNumber = BusNumber;
     }
-    public void setRouteName(String RouteName){
-        this.RouteName = RouteName;
+    public void setStopNumber(String StopNumber){
+        this.StopNumber = StopNumber;
+    }
+    public void setTripHeadsign(String TripHeadsign){
+        this.TripHeadsign = TripHeadsign;
     }
 
     public String getBusNumber(){
         return BusNumber;
     }
-    public String getRouteName(){
-        return RouteName;
+    public String getStopNumber(){
+        return StopNumber;
+    }
+    public String getTripHeadsign(){
+        return TripHeadsign;
     }
 
     @Override
@@ -45,7 +48,8 @@ public class BusInfo implements Parcelable{
     public void writeToParcel(Parcel dest, int flags){
         dest.writeStringArray(new String[] {
                 this.BusNumber,
-                this.RouteName
+                this.StopNumber,
+                this.TripHeadsign
         });
     }
 
